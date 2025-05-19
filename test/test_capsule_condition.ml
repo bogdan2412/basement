@@ -2,7 +2,7 @@ open! Basement
 
 module Domain = struct
   include Domain
-  include Stdlib_shim_upstream.Domain.Safe
+  include Stdlib_shim.Domain.Safe
 end
 
 [@@@ocaml.alert "-unsafe_parallelism"]

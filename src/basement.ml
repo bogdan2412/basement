@@ -6,4 +6,3 @@ module Portable_atomic = Portable_atomic
 module Portable_lazy = Portable_lazy
 module Stdlib_iarray_labels = Stdlib_iarray_labels
 module Stdlib_shim = Stdlib_shim
-module Stdlib_shim_upstream = Stdlib_shim_upstream
