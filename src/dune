@@ -23,3 +23,9 @@
  (deps)
  (action
   (bash "echo '()' > ocamlopt-flags")))
+
+(rule
+ (targets config.h)
+ (deps (:first_dep ../discover/discover.exe))
+ (action
+  (run %{first_dep})))

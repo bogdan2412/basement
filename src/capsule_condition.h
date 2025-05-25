@@ -1,5 +1,7 @@
 #pragma once
 
+#include "config.h"
+
 /* Condition variable implementation via futex, mirroring OCaml stdlib.
 
    The implementation is copied from the OCaml runtime to avoid this bug:
@@ -7,6 +9,8 @@
 */
 
 #ifdef CAML_INTERNALS
+
+#ifdef PLATFORM_LINUX
 
 #include <string.h>
 #include <errno.h>
@@ -86,5 +90,46 @@ Caml_inline int capsule_condition_destroy(capsule_condition c) {
   caml_stat_free(c);
   return CONDITION_SUCCESS;
 }
+
+#else /* PLATFORM_LINUX */
+
+typedef caml_plat_cond * capsule_condition;
+#define Condition_val(v) (* (capsule_condition *) Data_custom_val(v))
+
+Caml_inline int capsule_condition_create(capsule_condition * res)
+{
+  int rc;
+  capsule_condition c = caml_stat_alloc_noexc(sizeof(pthread_cond_t));
+  if (c == NULL) return ENOMEM;
+  rc = pthread_cond_init(c, NULL);
+  if (rc != 0) { caml_stat_free(c); return rc; }
+  *res = c;
+  return 0;
+}
+
+Caml_inline int capsule_condition_destroy(capsule_condition c)
+{
+  int rc;
+  rc = pthread_cond_destroy(c);
+  caml_stat_free(c);
+  return rc;
+}
+
+Caml_inline int capsule_condition_signal(capsule_condition c)
+{
+ return pthread_cond_signal(c);
+}
+
+Caml_inline int capsule_condition_broadcast(capsule_condition c)
+{
+    return pthread_cond_broadcast(c);
+}
+
+Caml_inline int capsule_condition_wait(capsule_condition c, capsule_mutex m)
+{
+  return pthread_cond_wait(c, m);
+}
+
+#endif /* PLATFORM_LINUX */
 
 #endif /* CAML_INTERNALS */
