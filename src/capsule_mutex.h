@@ -1,8 +1,12 @@
 #pragma once
 
+#include "config.h"
+
 /* Mutex implementation via binary semaphore, mirroring OCaml stdlib. */
 
 #ifdef CAML_INTERNALS
+
+#ifdef PLATFORM_LINUX
 
 #include <assert.h>
 #include <stdbool.h>
@@ -144,5 +148,63 @@ Caml_inline int capsule_mutex_destroy(capsule_mutex mut) {
   }
   return errno;
 }
+
+#else /* PLATFORM_LINUX */
+
+typedef caml_plat_mutex * capsule_mutex;
+#define Mutex_val(v) (* ((capsule_mutex *) Data_custom_val(v)))
+
+Caml_inline int capsule_mutex_create(capsule_mutex * res)
+{
+  int rc;
+  pthread_mutexattr_t attr;
+  capsule_mutex m;
+
+  rc = pthread_mutexattr_init(&attr);
+  if (rc != 0) goto error1;
+  rc = pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK);
+  if (rc != 0) goto error2;
+  m = caml_stat_alloc_noexc(sizeof(pthread_mutex_t));
+  if (m == NULL) { rc = ENOMEM; goto error2; }
+  rc = pthread_mutex_init(m, &attr);
+  if (rc != 0) goto error3;
+  pthread_mutexattr_destroy(&attr);
+  *res = m;
+  return 0;
+error3:
+  caml_stat_free(m);
+error2:
+  pthread_mutexattr_destroy(&attr);
+error1:
+  return rc;
+}
+
+Caml_inline int capsule_mutex_destroy(capsule_mutex m)
+{
+  int rc;
+  rc = pthread_mutex_destroy(m);
+  caml_stat_free(m);
+  return rc;
+}
+
+Caml_inline int capsule_mutex_lock(capsule_mutex m)
+{
+  return pthread_mutex_lock(m);
+}
+
+#define MUTEX_PREVIOUSLY_UNLOCKED 0
+#define MUTEX_ALREADY_LOCKED EBUSY
+
+Caml_inline int capsule_mutex_trylock(capsule_mutex m)
+{
+  return pthread_mutex_trylock(m);
+}
+
+Caml_inline int capsule_mutex_unlock(capsule_mutex m)
+{
+  return pthread_mutex_unlock(m);
+}
+
+#endif /* PLATFORM_LINUX */
 
 #endif /* CAML_INTERNALS */
